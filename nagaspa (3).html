@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <!-- スマートフォン向けの表示設定 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>長島スパーランド アトラクションラリー</title>
+    <!-- Tailwind CSSを読み込み -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fontsを読み込み -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+      /* カスタムフォントを適用 */
+      body {
+        font-family: 'Noto Sans JP', sans-serif;
+      }
+      .font-pop {
+        font-family: 'Mochiy Pop One', sans-serif;
+      }
+      /* チェックボックスのカスタムスタイル */
+      .custom-checkbox:checked {
+        background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");
+        border-color: #3b82f6; /* blue-500 */
+        background-color: #3b82f6; /* blue-500 */
+      }
+    </style>
+  </head>
+  <body class="bg-gradient-to-b from-blue-200 to-green-200 min-h-screen">
+
+    <div class="container mx-auto p-4 max-w-md">
+
+      <!-- ヘッダーエリア -->
+      <header class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 mb-6 sticky top-4 z-10">
+        <h1 class="text-2xl md:text-3xl font-bold text-center text-gray-800 font-pop">長島スパーランド<br>アトラクションラリー</h1>
+        <div class="mt-4 text-center">
+          <p class="text-lg text-blue-600">現在の合計ポイント</p>
+          <p id="total-points" class="text-6xl font-bold text-blue-600 font-pop transition-all duration-300">0</p>
+        </div>
+      </header>
+
+      <!-- アトラクションリスト -->
+      <main id="attraction-list" class="space-y-4">
+        <!-- ここにアトラクションカードが動的に追加されます -->
+      </main>
+
+    </div>
+
+    <script>
+      // ---ここからJavaScript---
+
+      // GASのサーバーサイドにあったアトラクションデータを、こちらに直接記述します。
+      const attractions = [
+        { name: 'スチールドラゴン2000', points: 100, category: '絶叫', color: 'red' },
+        { name: '白鯨 (HAKUGEI)', points: 90, category: '絶叫', color: 'red' },
+        { name: '嵐 (ARASHI)', points: 80, category: '絶叫', color: 'red' },
+        { name: 'アクロバット', points: 80, category: '絶叫', color: 'red' },
+        { name: 'フライングカーペット', points: 50, category: 'ぐるぐる', color: 'yellow' },
+        { name: 'ジャイアントフリスビー', points: 70, category: 'ぐるぐる', color: 'yellow' },
+        { name: '観覧車オーロラ', points: 30, category: 'ファミリー', color: 'green' },
+        { name: 'スペースショット', points: 60, category: '絶叫', color: 'red' },
+        { name: 'メリーゴーランド', points: 20, category: 'ファミリー', color: 'green' },
+        { name: 'ジェットコースター', points: 40, category: 'ファミリー', color: 'green' },
+      ];
+
+      // 合計ポイントを保持する変数
+      let totalPoints = 0;
+
+      // ページが読み込まれたら、アトラクションリストのセットアップを開始します。
+      document.addEventListener('DOMContentLoaded', () => {
+        setupAttractionList(attractions);
+      });
+
+      // アトラクションリストを画面に表示する関数
+      function setupAttractionList(attractionsData) {
+        const listElement = document.getElementById('attraction-list');
+        
+        // データが空なら何もしない
+        if (!listElement) return;
+
+        // アトラクションデータを使ってカードを生成
+        attractionsData.forEach((attr, index) => {
+          const card = `
+            <div id="card-${index}" class="bg-white p-4 rounded-xl shadow-md transition-all duration-300 transform hover:scale-105">
+              <div class="flex items-center">
+                <div class="flex-grow">
+                  <span class="inline-block bg-${attr.color}-200 text-${attr.color}-800 text-xs px-2 py-1 rounded-full">${attr.category}</span>
+                  <h2 class="text-lg font-bold mt-1 text-gray-800">${attr.name}</h2>
+                  <p class="text-sm text-gray-500">${attr.points} ポイント</p>
+                </div>
+                <div class="flex-shrink-0 ml-4">
+                   <input type="checkbox"
+                     id="checkbox-${index}"
+                     data-points="${attr.points}"
+                     data-index="${index}"
+                     onchange="updateTotalPoints(this)"
+                     class="custom-checkbox appearance-none w-8 h-8 rounded-lg border-2 border-gray-300 bg-white checked:bg-blue-500 checked:border-blue-500 focus:outline-none transition duration-200 cursor-pointer">
+                </div>
+              </div>
+            </div>
+          `;
+          listElement.innerHTML += card;
+        });
+      }
+
+      // 合計ポイントを更新する関数
+      function updateTotalPoints(checkbox) {
+        const points = parseInt(checkbox.dataset.points, 10);
+        const index = parseInt(checkbox.dataset.index, 10);
+        const card = document.getElementById(`card-${index}`);
+        const totalPointsEl = document.getElementById('total-points');
+
+        if (checkbox.checked) {
+          totalPoints += points;
+          // カードのスタイルを変更
+          card.classList.add('bg-blue-100', 'shadow-lg', 'ring-2', 'ring-blue-400');
+        } else {
+          totalPoints -= points;
+          // カードのスタイルを元に戻す
+          card.classList.remove('bg-blue-100', 'shadow-lg', 'ring-2', 'ring-blue-400');
+        }
+
+        // ポイント表示をアニメーションさせる
+        totalPointsEl.classList.add('transform', 'scale-125');
+        totalPointsEl.innerText = totalPoints;
+        setTimeout(() => {
+          totalPointsEl.classList.remove('transform', 'scale-125');
+        }, 150);
+      }
+    </script>
+  </body>
+</html>
+
