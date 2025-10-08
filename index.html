@@ -52,13 +52,12 @@
 
     <script>
       // ▼▼▼▼▼ Firebaseのセットアップ情報 ▼▼▼▼▼
-      // 【最重要】Firebaseコンソールからコピーしたご自身の情報を、下の{}の間に貼り付けてください。
-      // 全角スペース（　）が混ざるとエラーになるため、ご注意ください。
+      // storageBucket の記述を修正しました。
       const firebaseConfig = {
         apiKey: "AIzaSyC5qCuL_OUzH_TyEtg-aW9AkI-I_mBUPKo",
         authDomain: "nagasap-f23c5.firebaseapp.com",
         projectId: "nagasap-f23c5",
-        storageBucket: "nagasap-f23c5.firebasestorage.app",
+        storageBucket: "nagasap-f23c5.appspot.com",
         messagingSenderId: "582187448865",
         appId: "1:582187448865:web:4835e9e99428f50f38c160"
       };
@@ -91,8 +90,8 @@
 
       function main() {
         try {
-          if (!firebaseConfig.apiKey) {
-              alert("警告: Firebaseの設定情報（firebaseConfig）が更新されていません。index.htmlファイルを編集してください。");
+          if (!firebaseConfig.apiKey || firebaseConfig.apiKey.startsWith("YOUR_")) {
+              alert("警告: Firebaseの設定情報（firebaseConfig）が正しくありません。");
               return;
           }
           firebase.initializeApp(firebaseConfig);
@@ -104,8 +103,8 @@
           
           auth.signInAnonymously().catch(error => console.error("Anonymous sign-in failed:", error));
         } catch (e) {
-            console.error("Firebaseの初期化に失敗しました。firebaseConfigの貼り付けミス（カンマや引用符の欠けなど）がないか確認してください。", e);
-            alert("エラー：Firebaseの初期化に失敗しました。設定情報の貼り付けミスがないか、ご確認ください。");
+            console.error("Firebaseの初期化に失敗しました。", e);
+            alert("エラー：Firebaseの初期化に失敗しました。");
         }
       }
 
@@ -142,7 +141,7 @@
           }
         }).catch(error => {
           console.error("グループ情報の取得に失敗しました:", error);
-          alert("データベースの読み込みに失敗しました。");
+          alert("データベースの読み込みに失敗しました。Firebaseのセキュリティルールや設定情報を確認してください。");
         });
       }
 
@@ -177,7 +176,7 @@
           }
         }, error => {
            console.error("Firestoreのデータ監視中にエラーが発生しました。", error);
-           alert("データベースとの通信に失敗しました。セキュリティルールが期限切れの可能性があります。");
+           alert("データベースとの通信に失敗しました。");
         });
       }
       
