@@ -28,6 +28,9 @@
         <div id="group-selection" class="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <!-- Group buttons will be inserted here by JS -->
         </div>
+        <div id="loading-message" class="text-gray-500 mt-4">
+            Firebaseに接続しています...
+        </div>
       </div>
     </div>
 
@@ -52,16 +55,16 @@
 
     <script>
       // ▼▼▼▼▼ Firebaseのセットアップ情報 ▼▼▼▼▼
-      // 【最重要】この下の const firebaseConfig = { ... }; の部分全体を、
-      // あなた自身のFirebaseプロジェクトからコピーした「config」のコードで完全に置き換えてください。
+      // 【重要】この下の const firebaseConfig = { ... }; の部分全体を、
+      // あなた自身のFirebaseプロジェクトの「Config」情報で置き換えてください。
       const firebaseConfig = {
-  apiKey: "AIzaSyC5qCuL_OUzH_TyEtg-aW9AkI-I_mBUPKo",
-  authDomain: "nagasap-f23c5.firebaseapp.com",
-  projectId: "nagasap-f23c5",
-  storageBucket: "nagasap-f23c5.firebasestorage.app",
-  messagingSenderId: "582187448865",
-  appId: "1:582187448865:web:4835e9e99428f50f38c160"
-};
+        apiKey: "AIzaSyC5qCuL_OUzH_TyEtg-aW9AkI-I_mBUPKo",
+        authDomain: "nagasap-f23c5.firebaseapp.com",
+        projectId: "nagasap-f23c5",
+        storageBucket: "nagasap-f23c5.firebasestorage.app",
+        messagingSenderId: "582187448865",
+        appId: "1:582187448865:web:4835e9e99428f50f38c160"
+      };
       // ▲▲▲▲▲ Firebaseのセットアップ情報 ▲▲▲▲▲
 
 
@@ -93,8 +96,8 @@
       // --- メイン処理 ---
       function main() {
         try {
-          if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.startsWith("YOUR_")) {
-            alert("【エラー】Firebase設定情報が正しくありません。\n\nindex.htmlファイルを編集して、ご自身のFirebaseプロジェクトからコピーした「config」のコードを貼り付けてください。");
+          if (!firebaseConfig || firebaseConfig.apiKey === "YOUR_API_KEY") {
+            document.getElementById('loading-message').textContent = 'Firebase設定情報がありません。index.htmlを編集してください。';
             return;
           }
           
@@ -103,15 +106,16 @@
           const db = firebase.firestore();
 
           auth.signInAnonymously().then(() => {
+            document.getElementById('loading-message').textContent = '接続成功！';
             setupGroupSelection(db);
             setupAttractionList(db);
           }).catch(error => {
             console.error("Firebase Anonymous sign-in failed:", error);
-            alert("Firebaseへの認証に失敗しました。エラー: " + error.message);
+            document.getElementById('loading-message').textContent = "認証エラー: " + error.message;
           });
         } catch (e) {
             console.error("Firebaseの初期化に失敗しました:", e);
-            alert(`Firebaseの初期化エラー: ${e.message}\n\n【ヒント】Firebaseコンソールからコピーした設定情報が正しいか、もう一度ご確認ください。`);
+            document.getElementById('loading-message').textContent = `初期化エラー: ${e.message}`;
         }
       }
 
@@ -125,6 +129,7 @@
           button.onclick = () => selectGroup(db, `group-${index + 1}`, `Group ${name}`);
           selectionDiv.appendChild(button);
         });
+        document.getElementById('loading-message').classList.add('hidden');
       }
 
       function selectGroup(db, groupId, groupName) {
