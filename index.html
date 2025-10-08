@@ -18,8 +18,6 @@
       }
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      .status-item { display: flex; align-items: center; }
-      .status-icon { width: 24px; height: 24px; margin-right: 8px; }
     </style>
   </head>
   <body class="bg-gradient-to-b from-blue-200 to-green-200 min-h-screen">
@@ -29,10 +27,6 @@
         <h2 class="text-2xl font-bold mb-6 font-pop">参加するグループを選んでね！</h2>
         <div id="group-selection" class="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <!-- Group buttons will be inserted here by JS -->
-        </div>
-        <div id="status-panel" class="mt-6 p-4 bg-gray-100 rounded-lg text-left text-sm">
-            <h3 class="font-bold text-gray-700 mb-2">接続ステータス（診断モード）</h3>
-            <div id="status-list" class="space-y-1"></div>
         </div>
       </div>
     </div>
@@ -96,63 +90,28 @@
         { name: 'ちびっこひろば', points: 5, category: 'Dランク', color: 'purple', memo: '小さな子供たちが安心して遊べるエリア。乗り物もたくさん。' }
       ];
 
-      // --- 診断モード用ヘルパー ---
-      const statusList = document.getElementById('status-list');
-      const addStatus = (message, type = 'pending') => {
-        const item = document.createElement('div');
-        item.className = 'status-item';
-        let icon = '';
-        let colorClass = 'text-gray-600';
-        if (type === 'success') {
-          icon = '✅';
-          colorClass = 'text-green-600';
-        } else if (type === 'error') {
-          icon = '❌';
-          colorClass = 'text-red-600 font-bold';
-        } else {
-          icon = '⏳';
-        }
-        item.innerHTML = `<span class="status-icon">${icon}</span> <span class="${colorClass}">${message}</span>`;
-        statusList.appendChild(item);
-      };
-
       // --- メイン処理 ---
-      async function main() {
+      function main() {
         try {
-          addStatus('Firebase設定の読み込み');
           if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.startsWith("YOUR_")) {
-            throw new Error('設定情報が更新されていません。');
+            alert("Firebase設定情報が正しくありません。index.htmlを編集して、ご自身のfirebaseConfigを貼り付けてください。");
+            return;
           }
-          addStatus('Firebase設定の読み込み: ✅ 成功', 'success');
-
-          addStatus('Firebaseの初期化');
-          const app = firebase.initializeApp(firebaseConfig);
-          addStatus('Firebaseの初期化: ✅ 成功', 'success');
-
+          
+          firebase.initializeApp(firebaseConfig);
           const auth = firebase.auth();
           const db = firebase.firestore();
 
-          addStatus('匿名認証でサインイン');
-          await auth.signInAnonymously();
-          addStatus('匿名認証でサインイン: ✅ 成功', 'success');
-
-          addStatus('データベース接続のテスト');
-          await db.collection('_test').doc('_test').get();
-          addStatus('データベース接続のテスト: ✅ 成功', 'success');
-
-          addStatus('アプリの準備完了！グループを選択してください。', 'success');
-
-          setupGroupSelection(db);
-          setupAttractionList(db);
-
+          auth.signInAnonymously().then(() => {
+            setupGroupSelection(db);
+            setupAttractionList(db);
+          }).catch(error => {
+            console.error("Firebase Anonymous sign-in failed:", error);
+            alert("Firebaseへの認証に失敗しました。");
+          });
         } catch (e) {
-          console.error("致命的なエラー:", e);
-          addStatus(`エラー: ${e.message}`, 'error');
-          if (e.message && e.message.includes("auth/configuration-not-found")) {
-              addStatus("ヒント: Firebase設定情報が正しくありません。Firebaseコンソールからもう一度コピーしてください。", "error");
-          } else if (e.message && e.message.includes("Could not reach Firestore backend")) {
-              addStatus("ヒント: ネットワーク接続またはFirebaseのセキュリティルールを確認してください。", "error");
-          }
+            console.error("Firebaseの初期化に失敗しました:", e);
+            alert(`Firebaseの初期化エラー: ${e.message}`);
         }
       }
 
