@@ -57,15 +57,21 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
     <script>
+      // ▼▼▼▼▼ Firebaseのセットアップ情報 ▼▼▼▼▼
+      // 【最重要】この下の const firebaseConfig = { ... }; の部分全体を、
+      // あなた自身のFirebaseプロジェクトからコピーしたコードで完全に置き換えてください。
       const firebaseConfig = {
         apiKey: "AIzaSyC5qCuL_OUzH_TyEtg-aW9AkI-I_mBUPKo",
         authDomain: "nagasap-f23c5.firebaseapp.com",
         projectId: "nagasap-f23c5",
-        storageBucket: "nagasap-f23c5.appspot.com",
+        storageBucket: "nagasap-f23c5.firebasestorage.app",
         messagingSenderId: "582187448865",
         appId: "1:582187448865:web:4835e9e99428f50f38c160"
       };
+      // ▲▲▲▲▲ Firebaseのセットアップ情報 ▲▲▲▲▲
 
+
+      // --- グローバル変数 ---
       let currentGroupId = null;
       const groupNames = ["A", "B", "C", "D", "E"];
       const attractions = [
@@ -114,8 +120,8 @@
       async function main() {
         try {
           addStatus('Firebase設定の読み込み');
-          if (!firebaseConfig || !firebaseConfig.apiKey) {
-            throw new Error('設定情報（firebaseConfig）がありません。');
+          if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.startsWith("YOUR_")) {
+            throw new Error('設定情報が更新されていません。');
           }
           addStatus('Firebase設定の読み込み: ✅ 成功', 'success');
 
@@ -142,10 +148,10 @@
         } catch (e) {
           console.error("致命的なエラー:", e);
           addStatus(`エラー: ${e.message}`, 'error');
-          if (e.message.includes("Could not reach Firestore backend")) {
+          if (e.message && e.message.includes("auth/configuration-not-found")) {
+              addStatus("ヒント: Firebase設定情報が正しくありません。Firebaseコンソールからもう一度コピーしてください。", "error");
+          } else if (e.message && e.message.includes("Could not reach Firestore backend")) {
               addStatus("ヒント: ネットワーク接続またはFirebaseのセキュリティルールを確認してください。", "error");
-          } else if (e.message.includes("is not a function")) {
-              addStatus("ヒント: Firebaseライブラリの読み込みに失敗している可能性があります。", "error");
           }
         }
       }
