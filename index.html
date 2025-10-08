@@ -52,20 +52,20 @@
 
     <script>
       // ▼▼▼▼▼ Firebaseのセットアップ情報 ▼▼▼▼▼
-      // appIdの値を引用符（"）で囲むように修正しました。
+      // 【最重要】この{}ブロック全体を、Firebaseコンソールからコピーしたご自身の情報で完全に置き換えてください。
+      // カンマ(,)や引用符("")を消さないように、慎重に貼り付けをお願いします。
       const firebaseConfig = {
-        apiKey: "AIzaSyC5qCuL_OUzH_TyEtg-aW9AkI-I_mBUPKo",
-        authDomain: "nagasap-f23c5.firebaseapp.com",
-        projectId: "nagasap-f23c5",
-        storageBucket: "nagasap-f23c5.firebasestorage.app",
-        messagingSenderId: "582187448865",
-        appId: "1:582187448865:web:4835e9e99428f50f38c160"
-      };
+  　　　　apiKey: "AIzaSyAV...", // ←ご自身の値
+  　　　　authDomain: "your-project-id.firebaseapp.com", // ←ご自身の値
+  　　　　projectId: "your-project-id", // ←ご自身の値
+  　　　　storageBucket: "your-project-id.appspot.com", // ←ご自身の値
+  　　　　messagingSenderId: "123456789012", // ←ご自身の値
+  　　　　appId: "1:123456789012:web:a1b2c3d4e5f6..." // ←ご自身の値
+}; // ←最後の閉じ括弧とセミコロンまでがセットです
       // ▲▲▲▲▲ Firebaseのセットアップ情報 ▲▲▲▲▲
 
       // --- グローバル変数 ---
       let currentGroupId = null;
-      // totalPointsはFirestoreから直接取得するため、ローカルでの保持は不要になりました
       const groupNames = ["A", "B", "C", "D", "E"];
       const attractions = [
         { name: 'スチールドラゴン2000', points: 250, category: 'SSSランク', color: 'red', memo: 'まさにキング・オブ・コースター！待ち時間も最長クラス。これを制覇できれば勝利は目前！' },
@@ -89,9 +89,12 @@
         { name: 'ちびっこひろば', points: 5, category: 'Dランク', color: 'purple', memo: '小さな子供たちが安心して遊べるエリア。乗り物もたくさん。' }
       ];
 
-      // --- アプリケーションのメイン処理 ---
       function main() {
         try {
+          if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+              alert("警告: Firebaseの設定情報（firebaseConfig）が更新されていません。index.htmlファイルを編集してください。");
+              return;
+          }
           firebase.initializeApp(firebaseConfig);
           const auth = firebase.auth();
           const db = firebase.firestore();
@@ -100,16 +103,15 @@
           setupAttractionList(db);
           
           auth.signInAnonymously().catch(error => console.error("Anonymous sign-in failed:", error));
-        
         } catch (e) {
-            console.error("Firebaseの初期化に失敗しました。firebaseConfigが正しいか確認してください。", e);
-            alert("エラー：Firebaseの設定が正しくありません。");
+            console.error("Firebaseの初期化に失敗しました。firebaseConfigの貼り付けミス（カンマや引用符の欠けなど）がないか確認してください。", e);
+            alert("エラー：Firebaseの初期化に失敗しました。設定情報の貼り付けミスがないか、ご確認ください。");
         }
       }
 
-      // --- グループ選択関連 ---
       function setupGroupSelection(db) {
         const selectionDiv = document.getElementById('group-selection');
+        selectionDiv.innerHTML = '';
         groupNames.forEach((name, index) => {
           const button = document.createElement('button');
           button.className = "p-4 bg-blue-500 text-white font-bold rounded-lg text-xl hover:bg-blue-600 transition";
@@ -121,44 +123,61 @@
 
       function selectGroup(db, groupId, groupName) {
         currentGroupId = groupId;
+        const groupDocRef = db.collection("groups").doc(groupId);
+        
+        groupDocRef.get().then(doc => {
+          if (!doc.exists) {
+            groupDocRef.set({
+              name: groupName,
+              score: 0,
+              checkedAttractions: []
+            }).then(() => {
+              showAppUIAndStartListening(db, groupName);
+            }).catch(error => {
+              console.error("グループの作成に失敗しました:", error);
+              alert("データベースに接続できませんでした。");
+            });
+          } else {
+            showAppUIAndStartListening(db, groupName);
+          }
+        }).catch(error => {
+          console.error("グループ情報の取得に失敗しました:", error);
+          alert("データベースの読み込みに失敗しました。");
+        });
+      }
+
+      function showAppUIAndStartListening(db, groupName) {
         document.getElementById('group-name-display').textContent = `${groupName} のポイント`;
         document.getElementById('group-modal').classList.add('hidden');
         document.getElementById('app-container').classList.remove('hidden');
         listenToScores(db);
       }
 
-      // --- Firestore & リアルタイム更新 ---
       function listenToScores(db) {
         db.collection("groups").onSnapshot(snapshot => {
           let groups = [];
-          snapshot.forEach(doc => groups.push({ id: doc.id, ...doc.data() }));
-          
-          groupNames.forEach((name, index) => {
-              const groupId = `group-${index + 1}`;
-              if (!groups.some(g => g.id === groupId)) {
-                  const groupData = { name: `Group ${name}`, score: 0, checkedAttractions: [] }; // checkedAttractionsを追加
-                  db.collection("groups").doc(groupId).set(groupData).catch(e => console.error("Group creation failed: ", e));
-                  groups.push({ id: groupId, ...groupData});
-              }
+          snapshot.forEach(doc => {
+            if (doc.exists) {
+              groups.push({ id: doc.id, ...doc.data() });
+            }
           });
+          
           updateScoreboardUI(groups);
           
           const myGroup = groups.find(g => g.id === currentGroupId);
           if(myGroup) {
             document.getElementById('total-points').textContent = myGroup.score || 0;
-            
-            // チェックボックスの状態をFirestoreのデータに基づいて更新
             const checkedIds = myGroup.checkedAttractions || [];
             attractions.forEach((attr, index) => {
                 const checkbox = document.getElementById(`checkbox-${index}`);
                 if (checkbox) {
-                    const shouldBeChecked = checkedIds.includes(checkbox.id);
-                    if (checkbox.checked !== shouldBeChecked) {
-                      checkbox.checked = shouldBeChecked;
-                    }
+                    checkbox.checked = checkedIds.includes(checkbox.id);
                 }
             });
           }
+        }, error => {
+           console.error("Firestoreのデータ監視中にエラーが発生しました。", error);
+           alert("データベースとの通信に失敗しました。セキュリティルールが期限切れの可能性があります。");
         });
       }
       
@@ -183,7 +202,6 @@
         });
       }
 
-      // --- アトラクションリスト & ポイント計算 ---
       function setupAttractionList(db) {
         const listElement = document.getElementById('attraction-list');
         listElement.innerHTML = '';
@@ -207,31 +225,32 @@
         });
       }
 
-      // ポイント計算を、より安全なサーバーサイドでの増減処理に変更
       function updateTotalPoints(checkbox, db) {
           const points = parseInt(checkbox.dataset.points, 10);
           const checkboxId = checkbox.id;
 
           if (currentGroupId) {
               const groupDocRef = db.collection("groups").doc(currentGroupId);
-              
-              if (checkbox.checked) {
-                  // ポイントを加算し、チェックしたアトラクションIDを配列に追加
-                  groupDocRef.update({
-                      score: firebase.firestore.FieldValue.increment(points),
-                      checkedAttractions: firebase.firestore.FieldValue.arrayUnion(checkboxId)
-                  }).catch((error) => console.error("Error updating score: ", error));
-              } else {
-                  // ポイントを減算し、チェックしたアトラクションIDを配列から削除
-                  groupDocRef.update({
-                      score: firebase.firestore.FieldValue.increment(-points),
-                      checkedAttractions: firebase.firestore.FieldValue.arrayRemove(checkboxId)
-                  }).catch((error) => console.error("Error updating score: ", error));
-              }
+              const updateData = {
+                  score: firebase.firestore.FieldValue.increment(checkbox.checked ? points : -points),
+                  checkedAttractions: checkbox.checked 
+                      ? firebase.firestore.FieldValue.arrayUnion(checkboxId) 
+                      : firebase.firestore.FieldValue.arrayRemove(checkboxId)
+              };
+
+              groupDocRef.update(updateData)
+                  .catch((error) => {
+                      console.error("Firestoreの更新に失敗しました！", error);
+                      alert(`ポイントの更新に失敗しました。\nエラー: ${error.message}`);
+                      checkbox.checked = !checkbox.checked;
+                  });
+          } else {
+              console.warn("グループが選択されていません。");
+              checkbox.checked = !checkbox.checked;
+              alert("エラー：グループが選択されていません。ページを再読み込みしてください。");
           }
       }
-
-      // ページが読み込まれたらmain関数を実行
+      
       document.addEventListener('DOMContentLoaded', main);
     </script>
   </body>
