@@ -2,55 +2,91 @@
 <html>
   <head>
     <base target="_top">
-    <!-- スマートフォン向けの表示設定 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>長島スパーランド アトラクションラリー</title>
-    <!-- Tailwind CSSを読み込み -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fontsを読み込み -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
-      /* カスタムフォントを適用 */
-      body {
-        font-family: 'Noto Sans JP', sans-serif;
-      }
-      .font-pop {
-        font-family: 'Mochiy Pop One', sans-serif;
-      }
-      /* チェックボックスのカスタムスタイル */
+      body { font-family: 'Noto Sans JP', sans-serif; }
+      .font-pop { font-family: 'Mochiy Pop One', sans-serif; }
       .custom-checkbox:checked {
         background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");
-        border-color: #3b82f6; /* blue-500 */
-        background-color: #3b82f6; /* blue-500 */
+        border-color: #3b82f6;
+        background-color: #3b82f6;
       }
+      /* スクロールバーを非表示にしつつ、スクロールは可能にする */
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
   </head>
   <body class="bg-gradient-to-b from-blue-200 to-green-200 min-h-screen">
 
-    <div class="container mx-auto p-4 max-w-md">
+    <!-- グループ選択モーダル -->
+    <div id="group-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+      <div class="bg-white p-8 rounded-2xl shadow-xl text-center w-full max-w-md">
+        <h2 class="text-2xl font-bold mb-6 font-pop">参加するグループを選んでね！</h2>
+        <div id="group-selection" class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <!-- Group buttons will be inserted here by JS -->
+        </div>
+      </div>
+    </div>
+
+    <div id="app-container" class="container mx-auto p-4 max-w-md hidden">
 
       <!-- ヘッダーエリア -->
       <header class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 mb-6 sticky top-4 z-10">
-        <h1 class="text-2xl md:text-3xl font-bold text-center text-gray-800 font-pop">長島スパーランド<br>アトラクションラリー</h1>
+        <h1 class="text-xl md:text-2xl font-bold text-center text-gray-800 font-pop">長島スパーランド<br>アトラクションラリー</h1>
         <div class="mt-4 text-center">
-          <p class="text-lg text-blue-600">現在の合計ポイント</p>
-          <p id="total-points" class="text-6xl font-bold text-blue-600 font-pop transition-all duration-300">0</p>
+          <p id="group-name-display" class="text-lg text-blue-600 font-bold">（グループ名）</p>
+          <p class="text-4xl md:text-6xl font-bold text-blue-600 font-pop transition-all duration-300" id="total-points">0</p>
         </div>
       </header>
 
+      <!-- ランキング表示エリア -->
+      <section class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 mb-6">
+        <h2 class="text-xl font-bold text-center text-gray-800 mb-4 font-pop">リアルタイムランキング</h2>
+        <div id="scoreboard" class="space-y-3">
+          <!-- Scoreboard items will be inserted here by JS -->
+        </div>
+      </section>
+
       <!-- アトラクションリスト -->
       <main id="attraction-list" class="space-y-4">
-        <!-- ここにアトラクションカードが動的に追加されます -->
+        <!-- Attraction cards will be inserted here by JS -->
       </main>
-
     </div>
 
-    <script>
-      // ---ここからJavaScript---
+    <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <!-- Add SDKs for Firebase products you want to use -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
 
-      // 頂いたCSVからアトラクションデータを更新しました！
+    <script>
+      // ▼▼▼▼▼ Firebaseのセットアップ情報 ▼▼▼▼▼
+      // ※「firebase-setup.md」の手順に従って、自分の情報をここに貼り付けてください
+      const firebaseConfig = {
+         apiKey: "AIzaSyC5qCuL_OUzH_TyEtg-aW9AkI-I_mBUPKo",
+         authDomain: "nagasap-f23c5.firebaseapp.com",
+         projectId: "nagasap-f23c5",
+         storageBucket: "nagasap-f23c5.firebasestorage.app",
+         messagingSenderId: "582187448865",
+         appId: "1:582187448865:web:4835e9e99428f50f38c160"
+
+      };
+      // ▲▲▲▲▲ Firebaseのセットアップ情報 ▲▲▲▲▲
+
+      // Initialize Firebase
+      const app = firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+
+      // --- グローバル変数 ---
+      let currentGroupId = null;
+      let totalPoints = 0;
+      const groupNames = ["A", "B", "C", "D", "E"];
       const attractions = [
         { name: 'スチールドラゴン2000', points: 250, category: 'SSSランク', color: 'red', memo: 'まさにキング・オブ・コースター！待ち時間も最長クラス。これを制覇できれば勝利は目前！' },
         { name: '白鯨（HAKUGEI）', points: 230, category: 'SSSランク', color: 'red', memo: '熱狂的ファンが多いハイブリッドコースター。激しい揺れとスピードで高ポイントをゲット！' },
@@ -73,23 +109,98 @@
         { name: 'ちびっこひろば', points: 5, category: 'Dランク', color: 'purple', memo: '小さな子供たちが安心して遊べるエリア。乗り物もたくさん。' }
       ];
 
-      // 合計ポイントを保持する変数
-      let totalPoints = 0;
-
-      // ページが読み込まれたら、アトラクションリストのセットアップを開始します。
+      // --- 初期化処理 ---
       document.addEventListener('DOMContentLoaded', () => {
-        setupAttractionList(attractions);
+        setupGroupSelection();
+        setupAttractionList();
+        
+        auth.signInAnonymously().catch(error => console.error("Anonymous sign-in failed:", error));
       });
 
-      // アトラクションリストを画面に表示する関数
-      function setupAttractionList(attractionsData) {
-        const listElement = document.getElementById('attraction-list');
-        
-        if (!listElement) return;
-        listElement.innerHTML = ''; // リストを一度空にする
+      // --- グループ選択関連 ---
+      function setupGroupSelection() {
+        const selectionDiv = document.getElementById('group-selection');
+        groupNames.forEach((name, index) => {
+          const button = document.createElement('button');
+          button.className = "p-4 bg-blue-500 text-white font-bold rounded-lg text-xl hover:bg-blue-600 transition";
+          button.textContent = `Group ${name}`;
+          button.onclick = () => selectGroup(`group-${index + 1}`, `Group ${name}`);
+          selectionDiv.appendChild(button);
+        });
+      }
 
-        // アトラクションデータを使ってカードを生成
-        attractionsData.forEach((attr, index) => {
+      function selectGroup(groupId, groupName) {
+        currentGroupId = groupId;
+        document.getElementById('group-name-display').textContent = `${groupName} のポイント`;
+        document.getElementById('group-modal').classList.add('hidden');
+        document.getElementById('app-container').classList.remove('hidden');
+        
+        // データベースを監視開始
+        listenToScores();
+      }
+
+      // --- Firestore & リアルタイム更新 ---
+      function listenToScores() {
+        // 全グループのデータをリアルタイムで購読
+        db.collection("groups").onSnapshot(snapshot => {
+          let groups = [];
+          snapshot.forEach(doc => {
+            groups.push({ id: doc.id, ...doc.data() });
+          });
+          
+          // 不足しているグループがあれば作成
+          groupNames.forEach((name, index) => {
+              const groupId = `group-${index + 1}`;
+              if (!groups.some(g => g.id === groupId)) {
+                  const groupData = { name: `Group ${name}`, score: 0 };
+                  db.collection("groups").doc(groupId).set(groupData);
+                  groups.push({ id: groupId, ...groupData});
+              }
+          });
+
+          // ランキングUIを更新
+          updateScoreboardUI(groups);
+          
+          // 自分のグループのポイントをUIに反映
+          const myGroup = groups.find(g => g.id === currentGroupId);
+          if(myGroup) {
+            totalPoints = myGroup.score;
+            document.getElementById('total-points').textContent = totalPoints;
+          }
+        });
+      }
+      
+      function updateScoreboardUI(groups) {
+        const scoreboardDiv = document.getElementById('scoreboard');
+        scoreboardDiv.innerHTML = '';
+        
+        // スコアの高い順に並び替え
+        groups.sort((a, b) => b.score - a.score);
+
+        groups.forEach((group, index) => {
+            const isMyGroup = group.id === currentGroupId;
+            const rank = index + 1;
+            let medal = '';
+            if (rank === 1) medal = '🥇';
+            if (rank === 2) medal = '🥈';
+            if (rank === 3) medal = '🥉';
+
+            const item = `
+            <div class="flex items-center p-3 rounded-lg ${isMyGroup ? 'bg-blue-100 ring-2 ring-blue-400' : 'bg-gray-50'}">
+              <div class="text-xl font-bold w-10">${medal || rank}</div>
+              <div class="flex-grow font-semibold text-gray-700">${group.name}</div>
+              <div class="text-xl font-bold text-blue-500">${group.score} pt</div>
+            </div>
+            `;
+            scoreboardDiv.innerHTML += item;
+        });
+      }
+
+      // --- アトラクションリスト & ポイント計算 ---
+      function setupAttractionList() {
+        const listElement = document.getElementById('attraction-list');
+        listElement.innerHTML = '';
+        attractions.forEach((attr, index) => {
           const card = `
             <div id="card-${index}" class="bg-white p-4 rounded-xl shadow-md transition-all duration-300 transform hover:scale-105">
               <div class="flex items-start">
@@ -103,7 +214,6 @@
                    <input type="checkbox"
                      id="checkbox-${index}"
                      data-points="${attr.points}"
-                     data-index="${index}"
                      onchange="updateTotalPoints(this)"
                      class="custom-checkbox appearance-none w-8 h-8 rounded-lg border-2 border-gray-300 bg-white checked:bg-blue-500 checked:border-blue-500 focus:outline-none transition duration-200 cursor-pointer">
                 </div>
@@ -114,29 +224,22 @@
         });
       }
 
-      // 合計ポイントを更新する関数
       function updateTotalPoints(checkbox) {
         const points = parseInt(checkbox.dataset.points, 10);
-        const index = parseInt(checkbox.dataset.index, 10);
-        const card = document.getElementById(`card-${index}`);
-        const totalPointsEl = document.getElementById('total-points');
+        let newTotalPoints = totalPoints;
 
         if (checkbox.checked) {
-          totalPoints += points;
-          // カードのスタイルを変更
-          card.classList.add('bg-blue-100', 'shadow-lg', 'ring-2', 'ring-blue-400');
+          newTotalPoints += points;
         } else {
-          totalPoints -= points;
-          // カードのスタイルを元に戻す
-          card.classList.remove('bg-blue-100', 'shadow-lg', 'ring-2', 'ring-blue-400');
+          newTotalPoints -= points;
         }
 
-        // ポイント表示をアニメーションさせる
-        totalPointsEl.classList.add('transform', 'scale-125');
-        totalPointsEl.innerText = totalPoints;
-        setTimeout(() => {
-          totalPointsEl.classList.remove('transform', 'scale-125');
-        }, 150);
+        // Firebaseのスコアを更新
+        if (currentGroupId) {
+            const groupDocRef = db.collection("groups").doc(currentGroupId);
+            groupDocRef.update({ score: newTotalPoints })
+              .catch((error) => console.error("Error updating score: ", error));
+        }
       }
     </script>
   </body>
