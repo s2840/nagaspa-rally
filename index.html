@@ -50,18 +50,27 @@
     <script>
       // ---ここからJavaScript---
 
-      // GASのサーバーサイドにあったアトラクションデータを、こちらに直接記述します。
+      // 頂いたCSVからアトラクションデータを更新しました！
       const attractions = [
-        { name: 'スチールドラゴン2000', points: 100, category: '絶叫', color: 'red' },
-        { name: '白鯨 (HAKUGEI)', points: 90, category: '絶叫', color: 'red' },
-        { name: '嵐 (ARASHI)', points: 80, category: '絶叫', color: 'red' },
-        { name: 'アクロバット', points: 80, category: '絶叫', color: 'red' },
-        { name: 'フライングカーペット', points: 50, category: 'ぐるぐる', color: 'yellow' },
-        { name: 'ジャイアントフリスビー', points: 70, category: 'ぐるぐる', color: 'yellow' },
-        { name: '観覧車オーロラ', points: 30, category: 'ファミリー', color: 'green' },
-        { name: 'スペースショット', points: 60, category: '絶叫', color: 'red' },
-        { name: 'メリーゴーランド', points: 20, category: 'ファミリー', color: 'green' },
-        { name: 'ジェットコースター', points: 40, category: 'ファミリー', color: 'green' },
+        { name: 'スチールドラゴン2000', points: 250, category: 'SSSランク', color: 'red', memo: 'まさにキング・オブ・コースター！待ち時間も最長クラス。これを制覇できれば勝利は目前！' },
+        { name: '白鯨（HAKUGEI）', points: 230, category: 'SSSランク', color: 'red', memo: '熱狂的ファンが多いハイブリッドコースター。激しい揺れとスピードで高ポイントをゲット！' },
+        { name: 'アクロバット', points: 180, category: 'SSランク', color: 'red', memo: 'うつ伏せで駆け抜ける爽快感が人気！待ち時間も長めなので、計画的に狙いたい。' },
+        { name: '嵐（ARASHI）', points: 170, category: 'SSランク', color: 'red', memo: '予測不能な回転が魅力！コアなファンが多く、見た目以上に手強いアトラクション。' },
+        { name: 'ジャイアントフリスビー', points: 120, category: 'Sランク', color: 'red', memo: '日本最大級の振り子型絶叫マシン。回転と高さでポイントも高め！' },
+        { name: 'スペースショット', points: 100, category: 'Sランク', color: 'red', memo: '一瞬で地上75mへ！拘束時間が短く、回転率が良いので、時間がない時にオススメ。' },
+        { name: 'シャトルループ', points: 90, category: 'Sランク', color: 'red', memo: '発進からわずか2秒でトップスピードに！往復タイプの元祖絶叫マシン。' },
+        { name: 'コークスクリュー', points: 80, category: 'Sランク', color: 'red', memo: '連続2回転が特徴。スリルと乗りやすさのバランスが良い。' },
+        { name: 'ルーピングスター', points: 70, category: 'Aランク', color: 'yellow', memo: '美しい形のループコースター。絶叫系の中では比較的待ち時間が短い傾向。' },
+        { name: 'フライングカーペット', points: 60, category: 'Aランク', color: 'yellow', memo: '魔法の絨毯で空中散歩。浮遊感が気持ちいい。' },
+        { name: 'バイキング', points: 50, category: 'Aランク', color: 'yellow', memo: '大きな海賊船が左右にスイング！船の端っこが一番スリルがある。' },
+        { name: 'ダブルワイルドマウス', points: 40, category: 'Aランク', color: 'yellow', memo: '急カーブと急加速が楽しい！見た目よりスリルがあるかも。' },
+        { name: 'ウェーブスウィンガー', points: 30, category: 'Bランク', color: 'blue', memo: '空飛ぶブランコ。回転しながら景色を楽しめる。' },
+        { name: 'テレコンバット', points: 25, category: 'Bランク', color: 'blue', memo: '自分で操縦して上下に動かせる戦闘機。' },
+        { name: '大観覧車オーロラ', points: 20, category: 'Cランク', color: 'green', memo: '長島スパーランドのシンボル。景色を楽しみながら一休み。' },
+        { name: 'メリーゴーランド', points: 15, category: 'Cランク', color: 'green', memo: '馬や馬車に乗って夢の世界へ。定番の癒し系アトラクション。' },
+        { name: 'ティーカップ', points: 15, category: 'Cランク', color: 'green', memo: '回しすぎ注意！ファミリーやカップルに人気。' },
+        { name: 'ピーターラビットコースター', points: 10, category: 'Dランク', color: 'purple', memo: 'キッズ向けの可愛いジェットコースター。初めてのコースターにぴったり。' },
+        { name: 'ちびっこひろば', points: 5, category: 'Dランク', color: 'purple', memo: '小さな子供たちが安心して遊べるエリア。乗り物もたくさん。' }
       ];
 
       // 合計ポイントを保持する変数
@@ -76,20 +85,21 @@
       function setupAttractionList(attractionsData) {
         const listElement = document.getElementById('attraction-list');
         
-        // データが空なら何もしない
         if (!listElement) return;
+        listElement.innerHTML = ''; // リストを一度空にする
 
         // アトラクションデータを使ってカードを生成
         attractionsData.forEach((attr, index) => {
           const card = `
             <div id="card-${index}" class="bg-white p-4 rounded-xl shadow-md transition-all duration-300 transform hover:scale-105">
-              <div class="flex items-center">
+              <div class="flex items-start">
                 <div class="flex-grow">
-                  <span class="inline-block bg-${attr.color}-200 text-${attr.color}-800 text-xs px-2 py-1 rounded-full">${attr.category}</span>
+                  <span class="inline-block bg-${attr.color}-200 text-${attr.color}-800 text-xs px-2 py-1 rounded-full font-semibold">${attr.category}</span>
                   <h2 class="text-lg font-bold mt-1 text-gray-800">${attr.name}</h2>
-                  <p class="text-sm text-gray-500">${attr.points} ポイント</p>
+                  <p class="text-sm text-gray-500 mt-1">${attr.points} ポイント</p>
+                  <p class="text-xs text-gray-600 mt-2 border-l-2 border-gray-200 pl-2">${attr.memo}</p>
                 </div>
-                <div class="flex-shrink-0 ml-4">
+                <div class="flex-shrink-0 ml-4 pt-5">
                    <input type="checkbox"
                      id="checkbox-${index}"
                      data-points="${attr.points}"
