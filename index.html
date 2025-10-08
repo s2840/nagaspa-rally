@@ -52,7 +52,7 @@
 
     <script>
       // ▼▼▼▼▼ Firebaseのセットアップ情報 ▼▼▼▼▼
-      // ※「firebase-setup.md」の手順に従って、自分の情報をここに貼り付けてください
+      // appIdの値を引用符（"）で囲むように修正しました。
       const firebaseConfig = {
         apiKey: "AIzaSyC5qCuL_OUzH_TyEtg-aW9AkI-I_mBUPKo",
         authDomain: "nagasap-f23c5.firebaseapp.com",
@@ -65,7 +65,7 @@
 
       // --- グローバル変数 ---
       let currentGroupId = null;
-      let totalPoints = 0;
+      // totalPointsはFirestoreから直接取得するため、ローカルでの保持は不要になりました
       const groupNames = ["A", "B", "C", "D", "E"];
       const attractions = [
         { name: 'スチールドラゴン2000', points: 250, category: 'SSSランク', color: 'red', memo: 'まさにキング・オブ・コースター！待ち時間も最長クラス。これを制覇できれば勝利は目前！' },
@@ -92,12 +92,10 @@
       // --- アプリケーションのメイン処理 ---
       function main() {
         try {
-          // Initialize Firebase
           firebase.initializeApp(firebaseConfig);
           const auth = firebase.auth();
           const db = firebase.firestore();
 
-          // --- 初期化処理 ---
           setupGroupSelection(db);
           setupAttractionList(db);
           
@@ -138,7 +136,7 @@
           groupNames.forEach((name, index) => {
               const groupId = `group-${index + 1}`;
               if (!groups.some(g => g.id === groupId)) {
-                  const groupData = { name: `Group ${name}`, score: 0 };
+                  const groupData = { name: `Group ${name}`, score: 0, checkedAttractions: [] }; // checkedAttractionsを追加
                   db.collection("groups").doc(groupId).set(groupData).catch(e => console.error("Group creation failed: ", e));
                   groups.push({ id: groupId, ...groupData});
               }
@@ -147,8 +145,19 @@
           
           const myGroup = groups.find(g => g.id === currentGroupId);
           if(myGroup) {
-            totalPoints = myGroup.score;
-            document.getElementById('total-points').textContent = totalPoints;
+            document.getElementById('total-points').textContent = myGroup.score || 0;
+            
+            // チェックボックスの状態をFirestoreのデータに基づいて更新
+            const checkedIds = myGroup.checkedAttractions || [];
+            attractions.forEach((attr, index) => {
+                const checkbox = document.getElementById(`checkbox-${index}`);
+                if (checkbox) {
+                    const shouldBeChecked = checkedIds.includes(checkbox.id);
+                    if (checkbox.checked !== shouldBeChecked) {
+                      checkbox.checked = shouldBeChecked;
+                    }
+                }
+            });
           }
         });
       }
@@ -156,7 +165,7 @@
       function updateScoreboardUI(groups) {
         const scoreboardDiv = document.getElementById('scoreboard');
         scoreboardDiv.innerHTML = '';
-        groups.sort((a, b) => b.score - a.score);
+        groups.sort((a, b) => (b.score || 0) - (a.score || 0));
         groups.forEach((group, index) => {
             const isMyGroup = group.id === currentGroupId;
             const rank = index + 1;
@@ -168,7 +177,7 @@
             <div class="flex items-center p-3 rounded-lg ${isMyGroup ? 'bg-blue-100 ring-2 ring-blue-400' : 'bg-gray-50'}">
               <div class="text-xl font-bold w-10">${medal || rank}</div>
               <div class="flex-grow font-semibold text-gray-700">${group.name}</div>
-              <div class="text-xl font-bold text-blue-500">${group.score} pt</div>
+              <div class="text-xl font-bold text-blue-500">${group.score || 0} pt</div>
             </div>`;
             scoreboardDiv.innerHTML += item;
         });
@@ -198,13 +207,28 @@
         });
       }
 
+      // ポイント計算を、より安全なサーバーサイドでの増減処理に変更
       function updateTotalPoints(checkbox, db) {
-        const points = parseInt(checkbox.dataset.points, 10);
-        let newTotalPoints = checkbox.checked ? totalPoints + points : totalPoints - points;
-        if (currentGroupId) {
-            db.collection("groups").doc(currentGroupId).update({ score: newTotalPoints })
-              .catch((error) => console.error("Error updating score: ", error));
-        }
+          const points = parseInt(checkbox.dataset.points, 10);
+          const checkboxId = checkbox.id;
+
+          if (currentGroupId) {
+              const groupDocRef = db.collection("groups").doc(currentGroupId);
+              
+              if (checkbox.checked) {
+                  // ポイントを加算し、チェックしたアトラクションIDを配列に追加
+                  groupDocRef.update({
+                      score: firebase.firestore.FieldValue.increment(points),
+                      checkedAttractions: firebase.firestore.FieldValue.arrayUnion(checkboxId)
+                  }).catch((error) => console.error("Error updating score: ", error));
+              } else {
+                  // ポイントを減算し、チェックしたアトラクションIDを配列から削除
+                  groupDocRef.update({
+                      score: firebase.firestore.FieldValue.increment(-points),
+                      checkedAttractions: firebase.firestore.FieldValue.arrayRemove(checkboxId)
+                  }).catch((error) => console.error("Error updating score: ", error));
+              }
+          }
       }
 
       // ページが読み込まれたらmain関数を実行
