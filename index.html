@@ -18,6 +18,8 @@
       }
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      .status-item { display: flex; align-items: center; }
+      .status-icon { width: 24px; height: 24px; margin-right: 8px; }
     </style>
   </head>
   <body class="bg-gradient-to-b from-blue-200 to-green-200 min-h-screen">
@@ -27,6 +29,10 @@
         <h2 class="text-2xl font-bold mb-6 font-pop">参加するグループを選んでね！</h2>
         <div id="group-selection" class="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <!-- Group buttons will be inserted here by JS -->
+        </div>
+        <div id="status-panel" class="mt-6 p-4 bg-gray-100 rounded-lg text-left text-sm">
+            <h3 class="font-bold text-gray-700 mb-2">接続ステータス（診断モード）</h3>
+            <div id="status-list" class="space-y-1"></div>
         </div>
       </div>
     </div>
@@ -51,8 +57,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
     <script>
-      // ▼▼▼▼▼ Firebaseのセットアップ情報 ▼▼▼▼▼
-      // storageBucket の記述を修正しました。
       const firebaseConfig = {
         apiKey: "AIzaSyC5qCuL_OUzH_TyEtg-aW9AkI-I_mBUPKo",
         authDomain: "nagasap-f23c5.firebaseapp.com",
@@ -61,9 +65,7 @@
         messagingSenderId: "582187448865",
         appId: "1:582187448865:web:4835e9e99428f50f38c160"
       };
-      // ▲▲▲▲▲ Firebaseのセットアップ情報 ▲▲▲▲▲
 
-      // --- グローバル変数 ---
       let currentGroupId = null;
       const groupNames = ["A", "B", "C", "D", "E"];
       const attractions = [
@@ -88,23 +90,63 @@
         { name: 'ちびっこひろば', points: 5, category: 'Dランク', color: 'purple', memo: '小さな子供たちが安心して遊べるエリア。乗り物もたくさん。' }
       ];
 
-      function main() {
+      // --- 診断モード用ヘルパー ---
+      const statusList = document.getElementById('status-list');
+      const addStatus = (message, type = 'pending') => {
+        const item = document.createElement('div');
+        item.className = 'status-item';
+        let icon = '';
+        let colorClass = 'text-gray-600';
+        if (type === 'success') {
+          icon = '✅';
+          colorClass = 'text-green-600';
+        } else if (type === 'error') {
+          icon = '❌';
+          colorClass = 'text-red-600 font-bold';
+        } else {
+          icon = '⏳';
+        }
+        item.innerHTML = `<span class="status-icon">${icon}</span> <span class="${colorClass}">${message}</span>`;
+        statusList.appendChild(item);
+      };
+
+      // --- メイン処理 ---
+      async function main() {
         try {
-          if (!firebaseConfig.apiKey || firebaseConfig.apiKey.startsWith("YOUR_")) {
-              alert("警告: Firebaseの設定情報（firebaseConfig）が正しくありません。");
-              return;
+          addStatus('Firebase設定の読み込み');
+          if (!firebaseConfig || !firebaseConfig.apiKey) {
+            throw new Error('設定情報（firebaseConfig）がありません。');
           }
-          firebase.initializeApp(firebaseConfig);
+          addStatus('Firebase設定の読み込み: ✅ 成功', 'success');
+
+          addStatus('Firebaseの初期化');
+          const app = firebase.initializeApp(firebaseConfig);
+          addStatus('Firebaseの初期化: ✅ 成功', 'success');
+
           const auth = firebase.auth();
           const db = firebase.firestore();
 
+          addStatus('匿名認証でサインイン');
+          await auth.signInAnonymously();
+          addStatus('匿名認証でサインイン: ✅ 成功', 'success');
+
+          addStatus('データベース接続のテスト');
+          await db.collection('_test').doc('_test').get();
+          addStatus('データベース接続のテスト: ✅ 成功', 'success');
+
+          addStatus('アプリの準備完了！グループを選択してください。', 'success');
+
           setupGroupSelection(db);
           setupAttractionList(db);
-          
-          auth.signInAnonymously().catch(error => console.error("Anonymous sign-in failed:", error));
+
         } catch (e) {
-            console.error("Firebaseの初期化に失敗しました。", e);
-            alert("エラー：Firebaseの初期化に失敗しました。");
+          console.error("致命的なエラー:", e);
+          addStatus(`エラー: ${e.message}`, 'error');
+          if (e.message.includes("Could not reach Firestore backend")) {
+              addStatus("ヒント: ネットワーク接続またはFirebaseのセキュリティルールを確認してください。", "error");
+          } else if (e.message.includes("is not a function")) {
+              addStatus("ヒント: Firebaseライブラリの読み込みに失敗している可能性があります。", "error");
+          }
         }
       }
 
@@ -130,19 +172,12 @@
               name: groupName,
               score: 0,
               checkedAttractions: []
-            }).then(() => {
-              showAppUIAndStartListening(db, groupName);
-            }).catch(error => {
-              console.error("グループの作成に失敗しました:", error);
-              alert("データベースに接続できませんでした。");
-            });
+            }).then(() => showAppUIAndStartListening(db, groupName))
+              .catch(e => console.error("グループ作成エラー", e));
           } else {
             showAppUIAndStartListening(db, groupName);
           }
-        }).catch(error => {
-          console.error("グループ情報の取得に失敗しました:", error);
-          alert("データベースの読み込みに失敗しました。Firebaseのセキュリティルールや設定情報を確認してください。");
-        });
+        }).catch(e => console.error("グループ取得エラー", e));
       }
 
       function showAppUIAndStartListening(db, groupName) {
@@ -156,28 +191,19 @@
         db.collection("groups").onSnapshot(snapshot => {
           let groups = [];
           snapshot.forEach(doc => {
-            if (doc.exists) {
-              groups.push({ id: doc.id, ...doc.data() });
-            }
+            if (doc.exists) groups.push({ id: doc.id, ...doc.data() });
           });
-          
           updateScoreboardUI(groups);
-          
           const myGroup = groups.find(g => g.id === currentGroupId);
-          if(myGroup) {
+          if (myGroup) {
             document.getElementById('total-points').textContent = myGroup.score || 0;
             const checkedIds = myGroup.checkedAttractions || [];
-            attractions.forEach((attr, index) => {
-                const checkbox = document.getElementById(`checkbox-${index}`);
-                if (checkbox) {
-                    checkbox.checked = checkedIds.includes(checkbox.id);
-                }
+            attractions.forEach((_, index) => {
+              const checkbox = document.getElementById(`checkbox-${index}`);
+              if (checkbox) checkbox.checked = checkedIds.includes(checkbox.id);
             });
           }
-        }, error => {
-           console.error("Firestoreのデータ監視中にエラーが発生しました。", error);
-           alert("データベースとの通信に失敗しました。");
-        });
+        }, e => console.error("データ監視エラー", e));
       }
       
       function updateScoreboardUI(groups) {
@@ -187,17 +213,13 @@
         groups.forEach((group, index) => {
             const isMyGroup = group.id === currentGroupId;
             const rank = index + 1;
-            let medal = '';
-            if (rank === 1) medal = '🥇';
-            if (rank === 2) medal = '🥈';
-            if (rank === 3) medal = '🥉';
-            const item = `
+            let medal = (rank === 1) ? '🥇' : (rank === 2) ? '🥈' : (rank === 3) ? '🥉' : '';
+            scoreboardDiv.innerHTML += `
             <div class="flex items-center p-3 rounded-lg ${isMyGroup ? 'bg-blue-100 ring-2 ring-blue-400' : 'bg-gray-50'}">
               <div class="text-xl font-bold w-10">${medal || rank}</div>
               <div class="flex-grow font-semibold text-gray-700">${group.name}</div>
               <div class="text-xl font-bold text-blue-500">${group.score || 0} pt</div>
             </div>`;
-            scoreboardDiv.innerHTML += item;
         });
       }
 
@@ -205,7 +227,7 @@
         const listElement = document.getElementById('attraction-list');
         listElement.innerHTML = '';
         attractions.forEach((attr, index) => {
-          const card = `
+          listElement.innerHTML += `
             <div id="card-${index}" class="bg-white p-4 rounded-xl shadow-md transition-all duration-300 transform hover:scale-105">
               <div class="flex items-start">
                 <div class="flex-grow">
@@ -220,14 +242,12 @@
                 </div>
               </div>
             </div>`;
-          listElement.innerHTML += card;
         });
       }
 
       function updateTotalPoints(checkbox, db) {
           const points = parseInt(checkbox.dataset.points, 10);
           const checkboxId = checkbox.id;
-
           if (currentGroupId) {
               const groupDocRef = db.collection("groups").doc(currentGroupId);
               const updateData = {
@@ -236,17 +256,10 @@
                       ? firebase.firestore.FieldValue.arrayUnion(checkboxId) 
                       : firebase.firestore.FieldValue.arrayRemove(checkboxId)
               };
-
-              groupDocRef.update(updateData)
-                  .catch((error) => {
-                      console.error("Firestoreの更新に失敗しました！", error);
-                      alert(`ポイントの更新に失敗しました。\nエラー: ${error.message}`);
-                      checkbox.checked = !checkbox.checked;
-                  });
-          } else {
-              console.warn("グループが選択されていません。");
-              checkbox.checked = !checkbox.checked;
-              alert("エラー：グループが選択されていません。ページを再読み込みしてください。");
+              groupDocRef.update(updateData).catch(e => {
+                  console.error("ポイント更新エラー", e);
+                  checkbox.checked = !checkbox.checked;
+              });
           }
       }
       
