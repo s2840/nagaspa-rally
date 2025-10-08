@@ -58,26 +58,28 @@
       </main>
     </div>
 
-    <!-- Firebase SDK を読み込みます。バージョン違いによるエラーを修正するために互換性ライブラリ（compat）に変更しました。 -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <!-- Add SDKs for Firebase products you want to use -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
 
     <script>
       // ▼▼▼▼▼ Firebaseのセットアップ情報 ▼▼▼▼▼
       // ※「firebase-setup.md」の手順に従って、自分の情報をここに貼り付けてください
       const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_AUTH_DOMAIN",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_STORAGE_BUCKET",
-        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-        appId: "YOUR_APP_ID"
+        apiKey: "AIzaSyC5qCuL_OUzH_TyEtg-aW9AkI-I_mBUPKo",
+        authDomain: "nagasap-f23c5.firebaseapp.com",
+        projectId: "nagasap-f23c5",
+        storageBucket: "nagasap-f23c5.firebasestorage.app",
+        messagingSenderId: "582187448865",
+        appId: "1:582187448865:web:4835e9e99428f50f38c160"
+
       };
       // ▲▲▲▲▲ Firebaseのセットアップ情報 ▲▲▲▲▲
 
       // Initialize Firebase
-      firebase.initializeApp(firebaseConfig);
+      const app = firebase.initializeApp(firebaseConfig);
       const auth = firebase.auth();
       const db = firebase.firestore();
 
