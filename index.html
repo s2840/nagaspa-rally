@@ -52,13 +52,12 @@
 
     <script>
       // ▼▼▼▼▼ Firebaseのセットアップ情報 ▼▼▼▼▼
-      // 【最重要】この下の const firebaseConfig = { ... }; の部分全体を、
-      // あなた自身のFirebaseプロジェクトからコピーしたコードで完全に置き換えてください。
+      // storageBucket の記述を修正しました。
       const firebaseConfig = {
         apiKey: "AIzaSyC5qCuL_OUzH_TyEtg-aW9AkI-I_mBUPKo",
         authDomain: "nagasap-f23c5.firebaseapp.com",
         projectId: "nagasap-f23c5",
-        storageBucket: "nagasap-f23c5.firebasestorage.app",
+        storageBucket: "nagasap-f23c5.appspot.com", // ←ここを修正しました！
         messagingSenderId: "582187448865",
         appId: "1:582187448865:web:4835e9e99428f50f38c160"
       };
@@ -93,8 +92,8 @@
       // --- メイン処理 ---
       function main() {
         try {
-          if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.startsWith("YOUR_")) {
-            alert("Firebase設定情報が正しくありません。index.htmlを編集して、ご自身のfirebaseConfigを貼り付けてください。");
+          if (!firebaseConfig || !firebaseConfig.apiKey) {
+            alert("Firebase設定情報がありません。");
             return;
           }
           
