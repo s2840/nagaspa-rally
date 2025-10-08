@@ -16,14 +16,12 @@
         border-color: #3b82f6;
         background-color: #3b82f6;
       }
-      /* スクロールバーを非表示にしつつ、スクロールは可能にする */
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
   </head>
   <body class="bg-gradient-to-b from-blue-200 to-green-200 min-h-screen">
 
-    <!-- グループ選択モーダル -->
     <div id="group-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
       <div class="bg-white p-8 rounded-2xl shadow-xl text-center w-full max-w-md">
         <h2 class="text-2xl font-bold mb-6 font-pop">参加するグループを選んでね！</h2>
@@ -34,8 +32,6 @@
     </div>
 
     <div id="app-container" class="container mx-auto p-4 max-w-md hidden">
-
-      <!-- ヘッダーエリア -->
       <header class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 mb-6 sticky top-4 z-10">
         <h1 class="text-xl md:text-2xl font-bold text-center text-gray-800 font-pop">長島スパーランド<br>アトラクションラリー</h1>
         <div class="mt-4 text-center">
@@ -43,26 +39,16 @@
           <p class="text-4xl md:text-6xl font-bold text-blue-600 font-pop transition-all duration-300" id="total-points">0</p>
         </div>
       </header>
-
-      <!-- ランキング表示エリア -->
       <section class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 mb-6">
         <h2 class="text-xl font-bold text-center text-gray-800 mb-4 font-pop">リアルタイムランキング</h2>
-        <div id="scoreboard" class="space-y-3">
-          <!-- Scoreboard items will be inserted here by JS -->
-        </div>
+        <div id="scoreboard" class="space-y-3"></div>
       </section>
-
-      <!-- アトラクションリスト -->
-      <main id="attraction-list" class="space-y-4">
-        <!-- Attraction cards will be inserted here by JS -->
-      </main>
+      <main id="attraction-list" class="space-y-4"></main>
     </div>
 
-    <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-    <!-- Add SDKs for Firebase products you want to use -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
     <script>
       // ▼▼▼▼▼ Firebaseのセットアップ情報 ▼▼▼▼▼
@@ -73,15 +59,9 @@
         projectId: "nagasap-f23c5",
         storageBucket: "nagasap-f23c5.firebasestorage.app",
         messagingSenderId: "582187448865",
-        appId: "1:582187448865:web:4835e9e99428f50f38c160"
-
+        appId: "web:4835e9e99428f50f38c160"
       };
       // ▲▲▲▲▲ Firebaseのセットアップ情報 ▲▲▲▲▲
-
-      // Initialize Firebase
-      const app = firebase.initializeApp(firebaseConfig);
-      const auth = firebase.auth();
-      const db = firebase.firestore();
 
       // --- グローバル変数 ---
       let currentGroupId = null;
@@ -109,59 +89,62 @@
         { name: 'ちびっこひろば', points: 5, category: 'Dランク', color: 'purple', memo: '小さな子供たちが安心して遊べるエリア。乗り物もたくさん。' }
       ];
 
-      // --- 初期化処理 ---
-      document.addEventListener('DOMContentLoaded', () => {
-        setupGroupSelection();
-        setupAttractionList();
+      // --- アプリケーションのメイン処理 ---
+      function main() {
+        try {
+          // Initialize Firebase
+          firebase.initializeApp(firebaseConfig);
+          const auth = firebase.auth();
+          const db = firebase.firestore();
+
+          // --- 初期化処理 ---
+          setupGroupSelection(db);
+          setupAttractionList(db);
+          
+          auth.signInAnonymously().catch(error => console.error("Anonymous sign-in failed:", error));
         
-        auth.signInAnonymously().catch(error => console.error("Anonymous sign-in failed:", error));
-      });
+        } catch (e) {
+            console.error("Firebaseの初期化に失敗しました。firebaseConfigが正しいか確認してください。", e);
+            alert("エラー：Firebaseの設定が正しくありません。");
+        }
+      }
 
       // --- グループ選択関連 ---
-      function setupGroupSelection() {
+      function setupGroupSelection(db) {
         const selectionDiv = document.getElementById('group-selection');
         groupNames.forEach((name, index) => {
           const button = document.createElement('button');
           button.className = "p-4 bg-blue-500 text-white font-bold rounded-lg text-xl hover:bg-blue-600 transition";
           button.textContent = `Group ${name}`;
-          button.onclick = () => selectGroup(`group-${index + 1}`, `Group ${name}`);
+          button.onclick = () => selectGroup(db, `group-${index + 1}`, `Group ${name}`);
           selectionDiv.appendChild(button);
         });
       }
 
-      function selectGroup(groupId, groupName) {
+      function selectGroup(db, groupId, groupName) {
         currentGroupId = groupId;
         document.getElementById('group-name-display').textContent = `${groupName} のポイント`;
         document.getElementById('group-modal').classList.add('hidden');
         document.getElementById('app-container').classList.remove('hidden');
-        
-        // データベースを監視開始
-        listenToScores();
+        listenToScores(db);
       }
 
       // --- Firestore & リアルタイム更新 ---
-      function listenToScores() {
-        // 全グループのデータをリアルタイムで購読
+      function listenToScores(db) {
         db.collection("groups").onSnapshot(snapshot => {
           let groups = [];
-          snapshot.forEach(doc => {
-            groups.push({ id: doc.id, ...doc.data() });
-          });
+          snapshot.forEach(doc => groups.push({ id: doc.id, ...doc.data() }));
           
-          // 不足しているグループがあれば作成
           groupNames.forEach((name, index) => {
               const groupId = `group-${index + 1}`;
               if (!groups.some(g => g.id === groupId)) {
                   const groupData = { name: `Group ${name}`, score: 0 };
-                  db.collection("groups").doc(groupId).set(groupData);
+                  db.collection("groups").doc(groupId).set(groupData).catch(e => console.error("Group creation failed: ", e));
                   groups.push({ id: groupId, ...groupData});
               }
           });
-
-          // ランキングUIを更新
           updateScoreboardUI(groups);
           
-          // 自分のグループのポイントをUIに反映
           const myGroup = groups.find(g => g.id === currentGroupId);
           if(myGroup) {
             totalPoints = myGroup.score;
@@ -173,10 +156,7 @@
       function updateScoreboardUI(groups) {
         const scoreboardDiv = document.getElementById('scoreboard');
         scoreboardDiv.innerHTML = '';
-        
-        // スコアの高い順に並び替え
         groups.sort((a, b) => b.score - a.score);
-
         groups.forEach((group, index) => {
             const isMyGroup = group.id === currentGroupId;
             const rank = index + 1;
@@ -184,20 +164,18 @@
             if (rank === 1) medal = '🥇';
             if (rank === 2) medal = '🥈';
             if (rank === 3) medal = '🥉';
-
             const item = `
             <div class="flex items-center p-3 rounded-lg ${isMyGroup ? 'bg-blue-100 ring-2 ring-blue-400' : 'bg-gray-50'}">
               <div class="text-xl font-bold w-10">${medal || rank}</div>
               <div class="flex-grow font-semibold text-gray-700">${group.name}</div>
               <div class="text-xl font-bold text-blue-500">${group.score} pt</div>
-            </div>
-            `;
+            </div>`;
             scoreboardDiv.innerHTML += item;
         });
       }
 
       // --- アトラクションリスト & ポイント計算 ---
-      function setupAttractionList() {
+      function setupAttractionList(db) {
         const listElement = document.getElementById('attraction-list');
         listElement.innerHTML = '';
         attractions.forEach((attr, index) => {
@@ -211,36 +189,26 @@
                   <p class="text-xs text-gray-600 mt-2 border-l-2 border-gray-200 pl-2">${attr.memo}</p>
                 </div>
                 <div class="flex-shrink-0 ml-4 pt-5">
-                   <input type="checkbox"
-                     id="checkbox-${index}"
-                     data-points="${attr.points}"
-                     onchange="updateTotalPoints(this)"
+                   <input type="checkbox" id="checkbox-${index}" data-points="${attr.points}" onchange="updateTotalPoints(this, db)"
                      class="custom-checkbox appearance-none w-8 h-8 rounded-lg border-2 border-gray-300 bg-white checked:bg-blue-500 checked:border-blue-500 focus:outline-none transition duration-200 cursor-pointer">
                 </div>
               </div>
-            </div>
-          `;
+            </div>`;
           listElement.innerHTML += card;
         });
       }
 
-      function updateTotalPoints(checkbox) {
+      function updateTotalPoints(checkbox, db) {
         const points = parseInt(checkbox.dataset.points, 10);
-        let newTotalPoints = totalPoints;
-
-        if (checkbox.checked) {
-          newTotalPoints += points;
-        } else {
-          newTotalPoints -= points;
-        }
-
-        // Firebaseのスコアを更新
+        let newTotalPoints = checkbox.checked ? totalPoints + points : totalPoints - points;
         if (currentGroupId) {
-            const groupDocRef = db.collection("groups").doc(currentGroupId);
-            groupDocRef.update({ score: newTotalPoints })
+            db.collection("groups").doc(currentGroupId).update({ score: newTotalPoints })
               .catch((error) => console.error("Error updating score: ", error));
         }
       }
+
+      // ページが読み込まれたらmain関数を実行
+      document.addEventListener('DOMContentLoaded', main);
     </script>
   </body>
 </html>
