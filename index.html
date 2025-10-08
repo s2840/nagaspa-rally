@@ -52,12 +52,13 @@
 
     <script>
       // ▼▼▼▼▼ Firebaseのセットアップ情報 ▼▼▼▼▼
-      // storageBucket の記述を修正しました。
+      // 【最重要】この下の const firebaseConfig = { ... }; の部分全体を、
+      // あなた自身のFirebaseプロジェクトからコピーした「config」のコードで完全に置き換えてください。
       const firebaseConfig = {
         apiKey: "AIzaSyC5qCuL_OUzH_TyEtg-aW9AkI-I_mBUPKo",
         authDomain: "nagasap-f23c5.firebaseapp.com",
         projectId: "nagasap-f23c5",
-        storageBucket: "nagasap-f23c5.appspot.com", // ←ここを修正しました！
+        storageBucket: "nagasap-f23c5.appspot.com",
         messagingSenderId: "582187448865",
         appId: "1:582187448865:web:4835e9e99428f50f38c160"
       };
@@ -92,8 +93,8 @@
       // --- メイン処理 ---
       function main() {
         try {
-          if (!firebaseConfig || !firebaseConfig.apiKey) {
-            alert("Firebase設定情報がありません。");
+          if (!firebaseConfig || !firebaseConfig.apiKey || firebaseConfig.apiKey.startsWith("YOUR_")) {
+            alert("【エラー】Firebase設定情報が正しくありません。\n\nindex.htmlファイルを編集して、ご自身のFirebaseプロジェクトからコピーした「config」のコードを貼り付けてください。");
             return;
           }
           
@@ -110,7 +111,7 @@
           });
         } catch (e) {
             console.error("Firebaseの初期化に失敗しました:", e);
-            alert(`Firebaseの初期化エラー: ${e.message}`);
+            alert(`Firebaseの初期化エラー: ${e.message}\n\n【ヒント】Firebaseコンソールからコピーした設定情報が正しいか、もう一度ご確認ください。`);
         }
       }
 
