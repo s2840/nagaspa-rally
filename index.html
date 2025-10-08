@@ -52,16 +52,16 @@
 
     <script>
       // ▼▼▼▼▼ Firebaseのセットアップ情報 ▼▼▼▼▼
-      // 【最重要】この{}ブロック全体を、Firebaseコンソールからコピーしたご自身の情報で完全に置き換えてください。
-      // カンマ(,)や引用符("")を消さないように、慎重に貼り付けをお願いします。
+      // 【最重要】Firebaseコンソールからコピーしたご自身の情報を、下の{}の間に貼り付けてください。
+      // 全角スペース（　）が混ざるとエラーになるため、ご注意ください。
       const firebaseConfig = {
-  　　　　apiKey: "AIzaSyAV...", // ←ご自身の値
-  　　　　authDomain: "your-project-id.firebaseapp.com", // ←ご自身の値
-  　　　　projectId: "your-project-id", // ←ご自身の値
-  　　　　storageBucket: "your-project-id.appspot.com", // ←ご自身の値
-  　　　　messagingSenderId: "123456789012", // ←ご自身の値
-  　　　　appId: "1:123456789012:web:a1b2c3d4e5f6..." // ←ご自身の値
-}; // ←最後の閉じ括弧とセミコロンまでがセットです
+        apiKey: "AIzaSyC5qCuL_OUzH_TyEtg-aW9AkI-I_mBUPKo",
+        authDomain: "nagasap-f23c5.firebaseapp.com",
+        projectId: "nagasap-f23c5",
+        storageBucket: "nagasap-f23c5.firebasestorage.app",
+        messagingSenderId: "582187448865",
+        appId: "1:582187448865:web:4835e9e99428f50f38c160"
+      };
       // ▲▲▲▲▲ Firebaseのセットアップ情報 ▲▲▲▲▲
 
       // --- グローバル変数 ---
@@ -91,7 +91,7 @@
 
       function main() {
         try {
-          if (firebaseConfig.apiKey === "YOUR_API_KEY") {
+          if (!firebaseConfig.apiKey) {
               alert("警告: Firebaseの設定情報（firebaseConfig）が更新されていません。index.htmlファイルを編集してください。");
               return;
           }
